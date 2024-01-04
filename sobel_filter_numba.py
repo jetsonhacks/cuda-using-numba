@@ -92,7 +92,7 @@ def main():
     filtered_image = None
     def sobel_filter_helper():
         nonlocal filtered_image
-        filtered_image = sobel_filter_parallel(input_image)
+        filtered_image = sobel_filter(input_image)
 
     times_to_run = 1
     timing = np.empty(times_to_run, dtype=np.float32)
@@ -104,7 +104,7 @@ def main():
     timing *= 1e-6
     print(f"Elapsed time: {timing.mean():.3f} +- {timing.std():.3f} ms") 
 
-    times_to_run = 50
+    times_to_run = 10
     timing = np.empty(times_to_run, dtype=np.float32)
     for i in range(timing.size):
         tic = perf_counter_ns()

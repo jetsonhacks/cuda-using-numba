@@ -64,18 +64,21 @@ def main():
 
     def sobel_filter_helper():
         nonlocal filtered_image
+        # copy the input image to the device
         input_image_device = cuda.to_device(input_image)
+        # Allocate the output array on the device
         result_device = cuda.device_array(input_image.shape, np.uint8)
         sobel_filter[blockspergrid, threadsperblock](input_image_device, result_device, d_sobel_x, d_sobel_y)
         # Copy the result back to the host
+        cuda.synchronize()
         filtered_image = result_device.copy_to_host()
 
     times_to_run = 1
     timing = np.empty(times_to_run, dtype=np.float32)
     for i in range(timing.size):
+        cuda.synchronize()
         tic = perf_counter_ns()
         sobel_filter_helper()
-        cuda.synchronize()
         toc = perf_counter_ns()
         timing[i] = toc-tic
     timing *= 1e-6
@@ -84,9 +87,9 @@ def main():
     times_to_run = 1000
     timing = np.empty(times_to_run, dtype=np.float32)
     for i in range(timing.size):
+        cuda.synchronize()
         tic = perf_counter_ns()
         sobel_filter_helper()
-        cuda.synchronize()
         toc = perf_counter_ns()
         timing[i] = toc-tic
     timing *= 1e-6
