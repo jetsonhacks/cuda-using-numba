@@ -2,8 +2,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 from time import perf_counter_ns
+import numba
 
 # The input image should be grayscale
+@numba.jit(nopython=True)
 def sobel_filter(input_image):
     """
     Apply a Sobel filter to the image.
@@ -22,6 +24,7 @@ def sobel_filter(input_image):
             grad_y[i, j] = np.sum(Gy * input_image[i-1:i+2, j-1:j+2])
 
     # Normalize or clip the magnitude
+    # √ (grad_x^2 + grad_y^2)        
     magnitude = np.hypot(grad_x,grad_y)
     magnitude = np.clip(magnitude, 0, 255)  # Clip to the range 0-255
     return magnitude.astype(np.uint8)  # Convert to uint8 if necessary

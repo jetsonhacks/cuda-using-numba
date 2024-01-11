@@ -29,10 +29,7 @@ def sobel_filter(input_image, output_image, kernel_x, kernel_y):
 
         # The magnitude of the gradient
         output_image[i, j] = min(255, max(0, math.sqrt(Gx**2 + Gy**2)))
-        # Approximated magnitude of the gradient
-        # magnitude = abs(Gx) + abs(Gy)
-        # Clamping the output to the range [0, 255]
-        # output_image[i, j] = min(255, magnitude)
+
 
 def main():
     # Read the image using matplotlib
@@ -55,30 +52,17 @@ def main():
     blockspergrid = (blockspergrid_x, blockspergrid_y)
 
     # Define Sobel kernels
-    SOBEL_X = [[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]]
-    SOBEL_Y = [[-1, -2, -1], [0, 0, 0], [1, 2, 1]]
-    # These are constants, put them on the device for fast access
-    # d_sobel_x = cuda.to_device(SOBEL_X)
-    # d_sobel_y = cuda.to_device(SOBEL_Y)
-    filtered_image = None
+    # SOBEL_X = [[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]]
+    # SOBEL_Y = [[-1, -2, -1], [0, 0, 0], [1, 2, 1]]
+    SOBEL_X = np.array([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]], dtype=np.int32)
+    SOBEL_Y = np.array([[-1, -2, -1], [0, 0, 0], [1, 2, 1]], dtype=np.int32)
+
+    filtered_image = np.zeros((input_image.shape[0], input_image.shape[1]), dtype=np.uint8)
 
     def sobel_filter_helper():
         nonlocal filtered_image
-        # copy the input image to the device
-        input_image_device = cuda.to_device(input_image)
-        # Allocate the output array on the device
-        result_device = cuda.device_array(input_image.shape, np.uint8)
-        d_sobel_x = cuda.to_device(SOBEL_X)
-        d_sobel_y = cuda.to_device(SOBEL_Y)
-
-        sobel_filter[blockspergrid, threadsperblock](input_image_device, result_device, d_sobel_x, d_sobel_y)
-        # Copy the result back to the host
+        sobel_filter[blockspergrid, threadsperblock](input_image, filtered_image, SOBEL_X, SOBEL_Y)
         cuda.synchronize()
-        filtered_image = result_device.copy_to_host()
-        del result_device
-        del input_image_device
-        del d_sobel_x
-        del d_sobel_y
 
     times_to_run = 1
     timing = np.empty(times_to_run, dtype=np.float32)
@@ -101,9 +85,6 @@ def main():
         timing[i] = toc-tic
     timing *= 1e-6
     print(f"Elapsed time: {timing.mean():.3f} +- {timing.std():.3f} ms") 
-
-    # del d_sobel_x
-    # del d_sobel_y
 
     # Display the result
     plt.rcParams["figure.figsize"] = (8,8)

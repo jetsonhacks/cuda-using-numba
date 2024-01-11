@@ -12,7 +12,8 @@ def sobel_filter(image_gray):
     # Apply Sobel filter in Y direction
     sobel_y = cv2.Sobel(image_gray, cv2.CV_32F, 0, 1, ksize=1)
 
-    # Calculate the magnitude of the gradients
+    # Normalize or clip the magnitude
+    # √ (grad_x^2 + grad_y^2)        
     magnitude = np.hypot(sobel_x,sobel_y)
     magnitude = np.clip(magnitude, 0, 255)  # Clip to the range 0-255
     # Convert magnitude to uint8

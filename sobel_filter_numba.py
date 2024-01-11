@@ -1,8 +1,35 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
-from numba import jit, prange, uint8, float64, float32
+from numba import jit, prange, uint8, float32
 from time import perf_counter_ns
+
+# The input_image should be grayscale
+# @numba.jit(nopython=True)
+@jit(uint8[:, :](float32[:, :]), nopython=True )
+def sobel_filter(input_image):
+    """
+    Apply a Sobel filter to the image.
+    """
+    Gx = np.array([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]])
+    Gy = np.array([[-1, -2, -1], [0, 0, 0], [1, 2, 1]])
+
+    # Initialize the gradient images
+    grad_x = np.zeros_like(input_image)
+    grad_y = np.zeros_like(input_image)
+
+    # Apply the filter
+    for i in range(1, input_image.shape[0] - 1):
+        for j in range(1, input_image.shape[1] - 1):
+            grad_x[i, j] = np.sum(Gx * input_image[i-1:i+2, j-1:j+2])
+            grad_y[i, j] = np.sum(Gy * input_image[i-1:i+2, j-1:j+2])
+
+    # Normalize or clip the magnitude
+    # √ (grad_x^2 + grad_y^2)        
+    magnitude = np.hypot(grad_x,grad_y)
+    magnitude = np.clip(magnitude, 0, 255)  # Clip to the range 0-255
+    return magnitude.astype(np.uint8)  # Convert to uint8 if necessary
+
 
 @jit(uint8[:, :](float32[:, :], float32[:, :]), nopython=True)
 def compute_magnitude(sobel_x, sobel_y):
@@ -17,7 +44,7 @@ def compute_magnitude(sobel_x, sobel_y):
     return magnitude.astype(np.uint8)  
 
 
-@jit(uint8[:, :](float32[:, :]), nopython=True, parallel=True, )
+@jit(uint8[:, :](float32[:, :]), nopython=True, parallel=True )
 def sobel_filter_parallel(input_image):
     """
     Apply a Sobel filter to the image.
@@ -39,42 +66,8 @@ def sobel_filter_parallel(input_image):
     magnitude = np.hypot(sobel_x, sobel_y)
     magnitude = np.clip(magnitude, 0, 255)  # Clip to the range 0-255
     return magnitude.astype(np.uint8)  # Convert to uint8 if necessary
-
-    # Initialize the magnitude array
-    magnitude = np.empty_like(sobel_x, dtype=np.uint8)
-
-    # Compute the magnitude in parallel
-    for i in prange(input_image.shape[0]):
-        for j in prange(input_image.shape[1]):
-            mag = np.sqrt(sobel_x[i, j]**2 + sobel_y[i, j]**2)
-            # Manually implement clipping
-            magnitude[i, j] = min(255, max(0, mag))
-
-    return magnitude
  
   
-# The input_image should be grayscale
-@jit(nopython=True)
-def sobel_filter(input_image):
-    """
-    Apply a Sobel filter to the image.
-    """
-    Gx = np.array([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]])
-    Gy = np.array([[-1, -2, -1], [0, 0, 0], [1, 2, 1]])
-
-    # Initialize the gradient images
-    grad_x = np.zeros_like(input_image)
-    grad_y = np.zeros_like(input_image)
-
-    # Apply the filter
-    for i in range(1, input_image.shape[0] - 1):
-        for j in range(1, input_image.shape[1] - 1):
-            grad_x[i, j] = np.sum(Gx * input_image[i-1:i+2, j-1:j+2])
-            grad_y[i, j] = np.sum(Gy * input_image[i-1:i+2, j-1:j+2])
-
-    magnitude = np.hypot(grad_x,grad_y)
-    magnitude = np.clip(magnitude, 0, 255)  # Clip to the range 0-255
-    return magnitude.astype(np.uint8)  # Convert to uint8 if necessary
 
 def main():
     # Read the image using matplotlib
@@ -92,7 +85,7 @@ def main():
     filtered_image = None
     def sobel_filter_helper():
         nonlocal filtered_image
-        filtered_image = sobel_filter(input_image)
+        filtered_image = sobel_filter_parallel(input_image)
 
     times_to_run = 1
     timing = np.empty(times_to_run, dtype=np.float32)
@@ -104,7 +97,7 @@ def main():
     timing *= 1e-6
     print(f"Elapsed time: {timing.mean():.3f} +- {timing.std():.3f} ms") 
 
-    times_to_run = 10
+    times_to_run = 1000
     timing = np.empty(times_to_run, dtype=np.float32)
     for i in range(timing.size):
         tic = perf_counter_ns()
